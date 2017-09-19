@@ -540,13 +540,7 @@ function initCryptoService(constantsService) {
 
     function aesDecrypt(self, encType, ctBytes, ivBytes, macBytes, key) {
         return getKeyForEncryption(self, key).then(function (theKey) {
-            if (encType === constantsService.encType.AesCbc128_HmacSha256_B64 &&
-                theKey.encType === constantsService.encType.AesCbc256_B64) {
-                // Old encrypt-then-mac scheme, swap out the key
-                _legacyEtmKey = _legacyEtmKey ||
-                    new SymmetricCryptoKey(theKey.key, false, constantsService.encType.AesCbc128_HmacSha256_B64);
-                theKey = _legacyEtmKey;
-            }
+            theKey = resolveLegacyKey(encType, theKey);
 
             if (encType !== theKey.encType) {
                 console.error('encType unavailable.');
@@ -576,14 +570,7 @@ function initCryptoService(constantsService) {
             encKey;
 
         return getKeyForEncryption(self, key).then(function (theKey) {
-            if (encType === constantsService.encType.AesCbc128_HmacSha256_B64 &&
-                theKey.encType === constantsService.encType.AesCbc256_B64) {
-                // Old encrypt-then-mac scheme, swap out the key
-                _legacyEtmKey = _legacyEtmKey ||
-                    new SymmetricCryptoKey(theKey.key, false, constantsService.encType.AesCbc128_HmacSha256_B64);
-                theKey = _legacyEtmKey;
-            }
-
+            theKey = resolveLegacyKey(encType, theKey);
             keyBuf = theKey.getBuffers();
             return _subtle.importKey('raw', keyBuf.encKey, { name: 'AES-CBC' }, false, ['decrypt']);
         }).then(function (theEncKey) {
@@ -609,6 +596,18 @@ function initCryptoService(constantsService) {
             }
             return _subtle.decrypt({ name: 'AES-CBC', iv: ivBuf }, encKey, ctBuf);
         });
+    }
+
+    function resolveLegacyKey(encType, key) {
+        if (encType === constantsService.encType.AesCbc128_HmacSha256_B64 &&
+            key.encType === constantsService.encType.AesCbc256_B64) {
+            // Old encrypt-then-mac scheme, make a new key
+            _legacyEtmKey = _legacyEtmKey ||
+                new SymmetricCryptoKey(key.key, false, constantsService.encType.AesCbc128_HmacSha256_B64);
+            return _legacyEtmKey;
+        }
+
+        return key;
     }
 
     CryptoService.prototype.rsaDecrypt = function (encValue) {
