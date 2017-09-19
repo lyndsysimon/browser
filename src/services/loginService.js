@@ -126,6 +126,7 @@ function initLoginService() {
             var promises = [];
             var decLogins = [];
             self.getAll(function (logins) {
+                console.time('getAllDecrypted decrypt');
                 for (var i = 0; i < logins.length; i++) {
                     promises.push(logins[i].decrypt().then(function (login) {
                         decLogins.push(login);
@@ -133,6 +134,7 @@ function initLoginService() {
                 }
 
                 Q.all(promises).then(function () {
+                    console.timeEnd('getAllDecrypted decrypt');
                     self.decryptedLoginCache = decLogins;
                     deferred.resolve(self.decryptedLoginCache);
                 });
